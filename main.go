@@ -4,8 +4,9 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/abelith/etu-bot/pkg/maxlib"
-	"github.com/max-messenger/max-bot-api-client-go/v2/model"
+	mcontext "github.com/abelith/etu-bot/pkg/maxlib/context"
+	"github.com/abelith/etu-bot/pkg/maxlib/core"
+	"github.com/abelith/etu-bot/pkg/maxlib/filters"
 	"net/http"
 	"os"
 	"os/signal"
@@ -14,10 +15,6 @@ import (
 
 	maxbot "github.com/max-messenger/max-bot-api-client-go/v2"
 )
-
-func HandleUpdate(_ context.Context, update model.Update) {
-	fmt.Println(update)
-}
 
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -39,23 +36,23 @@ func main() {
 		return
 	}
 
-	router := &maxlib.Router{}
-	router.HandleFunc(func(upd model.Update) error {
+	router := &core.Router{}
+	router.HandleFunc(func(c *mcontext.Context) error {
 		fmt.Println("start command hit")
 		return nil
-	}, maxlib.StartCommand)
-	router.HandleFunc(func(upd model.Update) error {
+	}, filters.StartCommand)
+	router.HandleFunc(func(c *mcontext.Context) error {
 		fmt.Println("fallback handler")
 		return nil
 	})
-	router.Use(func(next maxlib.UpdateHandler) maxlib.UpdateHandler {
-		return maxlib.HandlerFunc(func(upd model.Update) error {
+	router.Use(func(next core.UpdateHandler) core.UpdateHandler {
+		return core.HandlerFunc(func(c *mcontext.Context) error {
 			fmt.Println("mw triggered")
-			return next.HandleUpdate(upd)
+			return next.HandleUpdate(c)
 		})
 	})
 
-	dp := &maxlib.Dispatcher{
+	dp := &core.Dispatcher{
 		Api:     api,
 		Handler: router,
 	}

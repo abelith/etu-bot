@@ -1,13 +1,14 @@
-package maxlib
+package core
 
 import (
 	"errors"
-	"github.com/max-messenger/max-bot-api-client-go/v2/model"
+	mcontext "github.com/abelith/etu-bot/pkg/maxlib/context"
+	merrors "github.com/abelith/etu-bot/pkg/maxlib/errors"
 )
 
 type Middleware func(next UpdateHandler) UpdateHandler
 
-type Filter func(upd model.Update) bool
+type Filter func(c *mcontext.Context) bool
 
 type route struct {
 	h       UpdateHandler
@@ -19,14 +20,14 @@ type Router struct {
 	mw     []Middleware
 }
 
-func (r *Router) HandleUpdate(upd model.Update) error {
+func (r *Router) HandleUpdate(c *mcontext.Context) error {
 	var current UpdateHandler = HandlerFunc(r.dispatch)
 
 	for i := len(r.mw) - 1; i >= 0; i-- {
 		current = r.mw[i](current)
 	}
 
-	return current.HandleUpdate(upd)
+	return current.HandleUpdate(c)
 }
 
 func (r *Router) Use(mws ...Middleware) {
@@ -47,23 +48,23 @@ func (r *Router) Handle(h UpdateHandler, filters ...Filter) {
 	})
 }
 
-func (r *Router) dispatch(upd model.Update) error {
+func (r *Router) dispatch(c *mcontext.Context) error {
 	for _, rt := range r.routes {
-		if match(rt.filters, upd) {
-			err := rt.h.HandleUpdate(upd)
-			if errors.Is(err, ErrRouteNotFound) {
+		if match(rt.filters, c) {
+			err := rt.h.HandleUpdate(c)
+			if errors.Is(err, merrors.ErrRouteNotFound) {
 				continue
 			}
 			return err
 		}
 	}
 
-	return ErrRouteNotFound
+	return merrors.ErrRouteNotFound
 }
 
-func match(filters []Filter, upd model.Update) bool {
+func match(filters []Filter, c *mcontext.Context) bool {
 	for _, filter := range filters {
-		if !filter(upd) {
+		if !filter(c) {
 			return false
 		}
 	}

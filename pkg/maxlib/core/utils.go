@@ -1,6 +1,10 @@
-package maxlib
+package core
 
-import "slices"
+import (
+	"slices"
+)
+
+type updKey struct{}
 
 func Chain(h UpdateHandler, mws ...Middleware) UpdateHandler {
 	slices.Reverse(mws)

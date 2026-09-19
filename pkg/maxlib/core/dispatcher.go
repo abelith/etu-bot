@@ -1,21 +1,29 @@
-package maxlib
+package core
 
 import (
 	"context"
 	"errors"
+	mcontext "github.com/abelith/etu-bot/pkg/maxlib/context"
+	"github.com/abelith/etu-bot/pkg/maxlib/state"
 	maxbot "github.com/max-messenger/max-bot-api-client-go/v2"
 	"github.com/max-messenger/max-bot-api-client-go/v2/model"
 	"time"
 )
 
+type FSMStorage interface {
+	Put(ctx *state.Context) error
+	Delete(ctx *state.Context) error
+}
+
 type UpdateHandler interface {
-	HandleUpdate(update model.Update) error
+	HandleUpdate(c *mcontext.Context) error
 	Use(mw ...Middleware)
 }
 
 type Dispatcher struct {
-	Api     *maxbot.Api
-	Handler UpdateHandler
+	Api        *maxbot.Api
+	Handler    UpdateHandler
+	FSMStorage FSMStorage
 }
 
 func (d *Dispatcher) getUpdates(ctx context.Context) <-chan model.Update {
@@ -55,7 +63,18 @@ func (d *Dispatcher) getUpdates(ctx context.Context) <-chan model.Update {
 func (d *Dispatcher) handleUpdates(ch <-chan model.Update) {
 	for update := range ch {
 		go func() {
-			_ = d.Handler.HandleUpdate(update)
+			ctx := context.Background()
+			c := mcontext.New(ctx, update)
+
+			d.Handler.HandleUpdate(c)
+
+			st := c.State()
+			if st.GetState() == state.ClearState {
+				d.FSMStorage.Delete(st)
+			}
+			if st.GetState() != "" {
+				d.FSMStorage.Put(st)
+			}
 		}()
 	}
 }

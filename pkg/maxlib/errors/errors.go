@@ -1,4 +1,4 @@
-package maxlib
+package errors
 
 import "fmt"
 
