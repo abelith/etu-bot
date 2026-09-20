@@ -11,7 +11,11 @@ import (
 
 func StartCommand(c *mcontext.Context) bool {
 	upd := c.Update()
-	return upd.UpdateType == model.UpdateBotStarted
+	if upd.UpdateType == model.UpdateBotStarted {
+		return true
+	}
+
+	return strings.HasPrefix(upd.GetCommand().Command, "/start")
 }
 
 func Command(cmd string) core.Filter {
@@ -39,13 +43,18 @@ func MessageText(s string) core.Filter {
 func MessageTextRe(re *regexp.Regexp) core.Filter {
 	return func(c *mcontext.Context) bool {
 		if msg := c.Update().Message; msg != nil {
-			return re.MatchString(msg.Body.Text)
+			s := strings.TrimSpace(msg.Body.Text)
+			return re.MatchString(s)
 		}
 		return false
 	}
 }
 
 func MessageGeo(c *mcontext.Context) bool {
+	if c.Update().Message == nil {
+		return false
+	}
+
 	for _, attachment := range c.Update().Message.Body.Attachments {
 		if attachment.Type == model.AttachLocation {
 			return true
@@ -53,4 +62,19 @@ func MessageGeo(c *mcontext.Context) bool {
 	}
 
 	return false
+}
+
+func BotStopped(c *mcontext.Context) bool {
+	return c.Update().UpdateType == model.UpdateBotStopped
+}
+
+func Or(filters ...core.Filter) core.Filter {
+	return func(c *mcontext.Context) bool {
+		for _, filter := range filters {
+			if filter(c) {
+				return true
+			}
+		}
+		return false
+	}
 }

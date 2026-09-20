@@ -41,7 +41,8 @@ func main() {
 	rt := (&handlers.Handlers{UseCases: &stubs.UseCaseStub{}}).Router()
 	rt.Use(func(next core.UpdateHandler) core.UpdateHandler {
 		return core.HandlerFunc(func(c *mcontext.Context) error {
-			fmt.Println(c.State(), c.Update())
+			fmt.Println("DEBUG: state: ", c.State())
+			fmt.Println("DEBUG: update: ", c.Update())
 			return next.HandleUpdate(c)
 		})
 	})

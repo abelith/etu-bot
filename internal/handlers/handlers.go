@@ -25,9 +25,9 @@ const (
 const helloMsg = `Добро пожаловать в систему умного города. Так как вы являетесь новым пользователем, заполните следующие данные`
 const startMsg0 = "Как к Вам обращаться?"
 const startMsg1 = "Если вы организация, а не жилец, можете отправить в чат свой ключ авторизации, подтвердив свой статус"
-const startMsg2WithName = "%s, добро пожаловать в систему умного города. Заполните немного информации о себе, чтобы мы могли подключить вас к нужным системам"
-const startMsg2WithoutName = "Добро пожаловать в систему умного города. Заполните немного информации о себе, чтобы мы могли подключить вас к нужным системам"
-const fallbackMsg = "Ну и хуйню же ты высрал. От такого даже я охуел"
+const startMsg2WithName = "%s, добро пожаловать в систему умного города. Отправьте свою геолокацию, воспользуйтесь госуслугами или введите адрес вручную, чтобы мы могли подключить вас к нужным системам"
+const startMsg2WithoutName = "Добро пожаловать в систему умного города. Отправьте свою геолокацию, воспользуйтесь госуслугами или введите адрес вручную, чтобы мы могли подключить вас к нужным системам"
+const fallbackMsg = "Сообщение не распознано. Попробуйте снова"
 const leaveCurrent = "Оставить текущее"
 
 var tokenRe = regexp.MustCompile(`^token:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
@@ -36,6 +36,7 @@ type UseCases interface {
 	VerifyOrganization(ctx context.Context, token string) (string, error)
 	GetHouses(ctx context.Context, latitude, longitude float64) ([]*models.House, error)
 	AddInhabitant(ctx context.Context, inhabitant *models.Inhabitant) error
+	DeleteUser(ctx context.Context, id int) error
 }
 
 type Handlers struct {
@@ -48,9 +49,10 @@ func (h *Handlers) Router() *core.Router {
 	rt.HandleFunc(h.StartHandler1, filters.State(stateStart1))
 	rt.HandleFunc(h.StartHandler2Organization, filters.State(stateStart2), filters.MessageTextRe(tokenRe))
 	rt.HandleFunc(h.StartHandler2Inhabitant, filters.State(stateStart2), filters.MessageText("Я жилец"))
-	rt.HandleFunc(h.StartHandler3, filters.State(stateStart3), filters.MessageGeo)
+	rt.HandleFunc(h.StartHandler3, filters.State(stateStart3)) // debug stub
 	rt.HandleFunc(h.StartHandler4, filters.State(stateStart4))
-	rt.HandleFunc(h.StartHandler5, filters.State(stateStart5), filters.MessageText("Да"), filters.MessageText("Нет"))
+	rt.HandleFunc(h.StartHandler5, filters.State(stateStart5), filters.Or(filters.MessageText("Да"), filters.MessageText("Нет")))
+	rt.HandleFunc(h.BotStoppedHandler, filters.BotStopped)
 	rt.HandleFunc(h.FallbackHandler)
 	return rt
 }
@@ -124,6 +126,7 @@ func (h *Handlers) StartHandler2Inhabitant(c *mcontext.Context) error {
 	c.State().SetState(stateStart3)
 	kb := model.NewKeyboard()
 	kb.AddRow().AddGeoLocation("Мой адрес", false)
+	kb.AddRow().AddMessage("Адрес из госуслуг")
 	msg := maxbot.NewMessage()
 	msg.AddKeyboard(kb)
 
@@ -138,6 +141,11 @@ func (h *Handlers) StartHandler2Inhabitant(c *mcontext.Context) error {
 }
 
 func (h *Handlers) StartHandler3(c *mcontext.Context) error {
+	if txt := c.Update().Message; txt != nil && txt.Body.Text == "Адрес из госуслуг" {
+		msg := maxbot.NewMessage().SetText("WIP: Будет добавлено позже")
+		return c.Respond(msg)
+	}
+
 	var latitude float64
 	var longitude float64
 
@@ -146,6 +154,10 @@ func (h *Handlers) StartHandler3(c *mcontext.Context) error {
 			latitude = attachment.Latitude
 			longitude = attachment.Longitude
 		}
+	}
+
+	if latitude == 0 && longitude == 0 {
+		// todo: распарсить текстовый адрес, получить из него координаты
 	}
 
 	c.State().Set("latitude", fmt.Sprint(latitude))
@@ -162,7 +174,7 @@ func (h *Handlers) StartHandler3(c *mcontext.Context) error {
 	}
 
 	msg := maxbot.NewMessage().
-		SetText("Выберите свой ЖК").
+		SetText("Выберите свой дом").
 		AddKeyboard(kb)
 
 	c.State().SetState(stateStart4)
@@ -217,13 +229,19 @@ func (h *Handlers) StartHandler5(c *mcontext.Context) error {
 		}
 
 		msg.SetText("Вы подключены к системе. Поздравляем")
+		state.Clear()
 		return c.Respond(msg)
 	case "Нет":
-		msg.SetText("Пошёл нахуй")
+		msg.SetText("Введите данные повторно. Как к вам обращаться?")
+		c.State().SetState(stateStart1)
 		return c.Respond(msg)
 	}
 
 	return nil
+}
+
+func (h *Handlers) BotStoppedHandler(c *mcontext.Context) error {
+	return h.UseCases.DeleteUser(c, int(c.Update().UserID))
 }
 
 func (h *Handlers) FallbackHandler(c *mcontext.Context) error {

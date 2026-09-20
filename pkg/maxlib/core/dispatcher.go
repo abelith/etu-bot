@@ -43,10 +43,10 @@ func (d *Dispatcher) getUpdates(ctx context.Context) <-chan model.Update {
 			select {
 			case <-ctx.Done():
 				return
-			case <-time.Tick(1 * time.Second):
+			case <-time.Tick(200 * time.Millisecond):
 				updates, marker, err = d.Api.Subscriptions.GetUpdates(ctx, marker)
 				if err != nil && !errors.Is(err, context.Canceled) {
-					panic(err)
+					log.Println(err)
 				}
 
 				for _, update := range updates {
