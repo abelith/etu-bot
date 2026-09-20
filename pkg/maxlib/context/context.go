@@ -3,6 +3,7 @@ package context
 import (
 	"context"
 	"github.com/abelith/etu-bot/pkg/maxlib/state"
+	maxbot "github.com/max-messenger/max-bot-api-client-go/v2"
 	"github.com/max-messenger/max-bot-api-client-go/v2/model"
 	"time"
 )
@@ -11,13 +12,15 @@ type Context struct {
 	ctx   context.Context
 	upd   model.Update
 	state *state.Context
+	api   *maxbot.Api
 }
 
-func New(ctx context.Context, upd model.Update) *Context {
+func New(ctx context.Context, upd model.Update, state *state.Context, api *maxbot.Api) *Context {
 	return &Context{
 		ctx:   ctx,
 		upd:   upd,
-		state: state.New(int(upd.UserID)),
+		state: state,
+		api:   api,
 	}
 }
 
@@ -35,6 +38,13 @@ func (c *Context) State() *state.Context {
 
 func (c *Context) Update() model.Update {
 	return c.upd
+}
+
+func (c *Context) Respond(msg *maxbot.Message) error {
+	msg = msg.SetChat(c.upd.ChatID).SetUser(c.upd.UserID)
+
+	_, err := c.api.Messages.Send(c.ctx, msg)
+	return err
 }
 
 func (c *Context) Deadline() (deadline time.Time, ok bool) {
