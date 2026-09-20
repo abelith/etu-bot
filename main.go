@@ -4,8 +4,11 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/abelith/etu-bot/pkg/maxlib"
-	"github.com/max-messenger/max-bot-api-client-go/v2/model"
+	"github.com/abelith/etu-bot/internal/handlers"
+	mcontext "github.com/abelith/etu-bot/pkg/maxlib/context"
+	"github.com/abelith/etu-bot/pkg/maxlib/core"
+	"github.com/abelith/etu-bot/pkg/maxlib/state"
+	"github.com/abelith/etu-bot/tests/stubs"
 	"net/http"
 	"os"
 	"os/signal"
@@ -14,10 +17,6 @@ import (
 
 	maxbot "github.com/max-messenger/max-bot-api-client-go/v2"
 )
-
-func HandleUpdate(_ context.Context, update model.Update) {
-	fmt.Println(update)
-}
 
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -39,25 +38,19 @@ func main() {
 		return
 	}
 
-	router := &maxlib.Router{}
-	router.HandleFunc(func(upd model.Update) error {
-		fmt.Println("start command hit")
-		return nil
-	}, maxlib.StartCommand)
-	router.HandleFunc(func(upd model.Update) error {
-		fmt.Println("fallback handler")
-		return nil
-	})
-	router.Use(func(next maxlib.UpdateHandler) maxlib.UpdateHandler {
-		return maxlib.HandlerFunc(func(upd model.Update) error {
-			fmt.Println("mw triggered")
-			return next.HandleUpdate(upd)
+	rt := (&handlers.Handlers{UseCases: &stubs.UseCaseStub{}}).Router()
+	rt.Use(func(next core.UpdateHandler) core.UpdateHandler {
+		return core.HandlerFunc(func(c *mcontext.Context) error {
+			fmt.Println("DEBUG: state: ", c.State())
+			fmt.Println("DEBUG: update: ", c.Update())
+			return next.HandleUpdate(c)
 		})
 	})
 
-	dp := &maxlib.Dispatcher{
-		Api:     api,
-		Handler: router,
+	dp := &core.Dispatcher{
+		Api:        api,
+		Handler:    rt,
+		FSMStorage: state.NewMemoryFSMStorage(),
 	}
 	dp.StartPolling(ctx)
 }
