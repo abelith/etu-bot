@@ -75,9 +75,8 @@ func (h *Handlers) StartHandler(c *mcontext.Context) error {
 }
 
 func (h *Handlers) StartHandler1(c *mcontext.Context) error {
-	txt := c.Update().Message.Body.Text
-	if txt != leaveCurrent {
-		c.State().Set("name", txt)
+	if txt := c.Update().Message; txt != nil && txt.Body.Text != leaveCurrent {
+		c.State().Set("name", txt.Body.Text)
 	} else {
 		name := c.Update().User.Name
 		c.State().Set("name", name)
