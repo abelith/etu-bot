@@ -33,8 +33,6 @@ const leaveCurrent = "Оставить текущее"
 var tokenRe = regexp.MustCompile(`^token:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 type UseCases interface {
-	CheckUserExistence(ctx context.Context, id int) (bool, error)
-	SetUsername(ctx context.Context, username string) error
 	VerifyOrganization(ctx context.Context, token string) (string, error)
 	GetHouses(ctx context.Context, latitude, longitude float64) ([]*models.House, error)
 	AddInhabitant(ctx context.Context, inhabitant *models.Inhabitant) error

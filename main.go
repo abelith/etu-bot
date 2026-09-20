@@ -4,9 +4,11 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"github.com/abelith/etu-bot/internal/handlers"
 	mcontext "github.com/abelith/etu-bot/pkg/maxlib/context"
 	"github.com/abelith/etu-bot/pkg/maxlib/core"
-	"github.com/abelith/etu-bot/pkg/maxlib/filters"
+	"github.com/abelith/etu-bot/pkg/maxlib/state"
+	"github.com/abelith/etu-bot/tests/stubs"
 	"net/http"
 	"os"
 	"os/signal"
@@ -36,25 +38,18 @@ func main() {
 		return
 	}
 
-	router := &core.Router{}
-	router.HandleFunc(func(c *mcontext.Context) error {
-		fmt.Println("start command hit")
-		return nil
-	}, filters.StartCommand)
-	router.HandleFunc(func(c *mcontext.Context) error {
-		fmt.Println("fallback handler")
-		return nil
-	})
-	router.Use(func(next core.UpdateHandler) core.UpdateHandler {
+	rt := (&handlers.Handlers{UseCases: &stubs.UseCaseStub{}}).Router()
+	rt.Use(func(next core.UpdateHandler) core.UpdateHandler {
 		return core.HandlerFunc(func(c *mcontext.Context) error {
-			fmt.Println("mw triggered")
+			fmt.Println(c.State(), c.Update())
 			return next.HandleUpdate(c)
 		})
 	})
 
 	dp := &core.Dispatcher{
-		Api:     api,
-		Handler: router,
+		Api:        api,
+		Handler:    rt,
+		FSMStorage: state.NewMemoryFSMStorage(),
 	}
 	dp.StartPolling(ctx)
 }
