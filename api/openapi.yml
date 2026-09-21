@@ -1,0 +1,149 @@
+openapi: 3.0.3
+
+info:
+  title: Tag Service API (сервис нейронки)
+  version: 1.0.0
+  description: |
+    HTTP API Python-сервера, который присваивает тематические теги текстовым
+    сообщениям пользователей (объявления, заявки, обращения).
+
+    Клиент — основной сервис (бот на Go). Схема работы:
+
+    1. Пользователь нажимает «Отправить» при создании объявления.
+    2. Бот (Go) сначала пробует подобрать тег из общего списка в БД (по регулярке).
+    3. Если подходящего тега нет — бот вызывает `POST /api/v1/tags/assign`.
+    4. Полученные теги сохраняются вместе с объявлением и передаются в систему
+       уведомлений, которая по ним отсеивает пользователей с игнорируемыми тегами.
+
+    Пока модель не готова, сервер может возвращать заглушку (например, `["прочее"]`);
+    контракт при этом не меняется.
+
+servers:
+  - url: http://localhost:8000
+    description: Локальный запуск Python-сервера
+
+tags:
+  - name: tags
+    description: Присвоение тегов тексту
+  - name: system
+    description: Служебные ручки
+
+paths:
+  /api/v1/tags/assign:
+    post:
+      tags: [tags]
+      operationId: assignTags
+      summary: Присвоить теги сообщению
+      description: |
+        Принимает текст сообщения и возвращает список тематических тегов
+        (например, `покупка`, `гитара`). Список может быть пустым, если тему
+        определить не удалось — вызывающая сторона сама решает, что делать дальше.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignTagsRequest'
+            example:
+              message: Продам гитару Yamaha, состояние хорошее
+      responses:
+        '200':
+          description: Теги успешно присвоены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssignTagsResponse'
+              example:
+                data: [продажа, гитара]
+        '400':
+          description: Некорректный запрос (пустой текст, невалидный JSON, слишком длинное сообщение)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: invalid_request
+                message: message must not be empty
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: internal_error
+                message: unexpected error
+        '503':
+          description: Модель не готова (загружается или недоступна) — клиенту стоит повторить запрос позже
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: model_unavailable
+                message: model is not ready
+
+  /health:
+    get:
+      tags: [system]
+      operationId: healthCheck
+      summary: Проверка доступности сервиса
+      description: Используется ботом и оркестратором, чтобы убедиться, что сервис жив.
+      responses:
+        '200':
+          description: Сервис работает
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: ok
+
+components:
+  schemas:
+    AssignTagsRequest:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          description: Текст сообщения пользователя (объявление, заявка, обращение)
+          example: Отдам детскую коляску в хорошем состоянии
+
+    AssignTagsResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          description: Присвоенные теги. Пустой массив — тема не определена.
+          maxItems: 10
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+            maxLength: 64
+            description: Тег в нижнем регистре, без пробелов по краям
+          example: [отдам, коляска]
+
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Машинно-читаемый код ошибки
+          enum: [invalid_request, internal_error, model_unavailable]
+        message:
+          type: string
+          description: Человекочитаемое описание ошибки
