@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
@@ -16,6 +17,7 @@ import (
 )
 
 type Config struct {
+	Migrations        string        `env:"POSTGRES_MIGRATIONS"`
 	PostgresHost      string        `env:"POSTGRES_HOST" env-default:"127.0.0.1"`
 	PostgresPort      int           `env:"POSTGRES_PORT" env-default:"5432"`
 	PostgresDB        string        `env:"POSTGRES_DB"   env-default:"postgres"`
@@ -58,29 +60,29 @@ func (c *Config) DSN() string {
 	return u.String()
 }
 
-func NewPool(ctx context.Context, migrationsDir ...string) (*pgxpool.Pool, error) {
-	pool, err := makePool(ctx)
+func NewPool(ctx context.Context) (*pgxpool.Pool, error) {
+	cfg, err := NewConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	pool, err := makePool(ctx, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to make pool: %w", err)
 	}
 
-	if len(migrationsDir) < 1 {
+	if cfg.Migrations == "" {
 		return pool, nil
 	}
 
-	if err := runMigrations(migrationsDir[0], pool); err != nil {
+	if err := runMigrations(cfg.Migrations, pool); err != nil {
 		return nil, err
 	}
 
 	return pool, nil
 }
 
-func makePool(ctx context.Context) (*pgxpool.Pool, error) {
-	cfg, err := NewConfig()
-	if err != nil {
-		return nil, err
-	}
-
+func makePool(ctx context.Context, cfg *Config) (*pgxpool.Pool, error) {
 	poolCfg, err := pgxpool.ParseConfig(cfg.DSN())
 	if err != nil {
 		return nil, err
@@ -115,9 +117,13 @@ func runMigrations(migrations string, pool *pgxpool.Pool) error {
 	}
 
 	mig, err := migrate.NewWithDatabaseInstance(source, "postgresql", driver)
-	if err != nil && !errors.Is(err, migrate.ErrNoChange) {
+	if err != nil {
 		return err
 	}
 
-	return mig.Up()
+	if err := mig.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		return err
+	}
+
+	return nil
 }

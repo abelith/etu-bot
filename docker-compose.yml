@@ -6,6 +6,9 @@ services:
             dockerfile: build/Dockerfile
         env_file:
             -   ./etc/bot/.env
+        depends_on:
+            -   postgres
+        restart: on-failure
     postgres:
         image: postgis/postgis:17-3.6-alpine
         platform: linux/amd64

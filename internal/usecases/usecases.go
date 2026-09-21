@@ -25,11 +25,16 @@ type UserCommand interface {
 	Delete(ctx context.Context, id int) error
 }
 
+type GeoCoder interface {
+	ParseAddress(ctx context.Context, addr string) (lat, long float64, err error)
+}
+
 type UseCases struct {
-	hc HousingCommand
-	hq HousingQuery
-	oc OrgCommand
-	uc UserCommand
+	hc  HousingCommand
+	hq  HousingQuery
+	oc  OrgCommand
+	uc  UserCommand
+	geo GeoCoder
 }
 
 func NewUseCases(
@@ -37,12 +42,14 @@ func NewUseCases(
 	hq HousingQuery,
 	oc OrgCommand,
 	uc UserCommand,
+	geo GeoCoder,
 ) *UseCases {
 	return &UseCases{
-		hc: hc,
-		hq: hq,
-		oc: oc,
-		uc: uc,
+		hc:  hc,
+		hq:  hq,
+		oc:  oc,
+		uc:  uc,
+		geo: geo,
 	}
 }
 
@@ -86,4 +93,8 @@ func (uc *UseCases) DeleteUser(ctx context.Context, id int) error {
 
 	events.Log.Write(map[string]any{"type": "user_deleted", "id": id})
 	return nil
+}
+
+func (uc *UseCases) ParseAddress(ctx context.Context, addr string) (lat float64, long float64, err error) {
+	return uc.geo.ParseAddress(ctx, addr)
 }

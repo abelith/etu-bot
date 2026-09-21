@@ -17,6 +17,7 @@ FROM scratch
 WORKDIR /app
 
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=build /app/db/migrations .
 COPY --from=build ./app .
 
 ENTRYPOINT ["./app"]
