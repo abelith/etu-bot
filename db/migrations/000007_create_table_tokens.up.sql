@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS tokens(
+    id uuid NOT NULL UNIQUE PRIMARY KEY,
+    org_id INT NOT NULL REFERENCES organizations(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

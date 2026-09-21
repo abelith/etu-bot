@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS houses (
+    id SERIAL UNIQUE NOT NULL PRIMARY KEY,
+    addr VARCHAR NOT NULL,
+    location GEOMETRY(Point, 4326),
+    json_data TEXT DEFAULT Null,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
