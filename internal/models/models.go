@@ -17,3 +17,5 @@ type Cluster struct {
 	Name   string
 	Houses []*House
 }
+
+type User struct{}

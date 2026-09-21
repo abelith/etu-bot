@@ -33,9 +33,9 @@ const leaveCurrent = "Оставить текущее"
 var tokenRe = regexp.MustCompile(`^token:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 type UseCases interface {
-	VerifyOrganization(ctx context.Context, token string) (string, error)
 	GetHouses(ctx context.Context, latitude, longitude float64) ([]*models.House, error)
 	AddInhabitant(ctx context.Context, inhabitant *models.Inhabitant) error
+	AddEmployee(ctx context.Context, id int, token string) (string, error)
 	DeleteUser(ctx context.Context, id int) error
 }
 
@@ -99,7 +99,7 @@ func (h *Handlers) StartHandler1(c *mcontext.Context) error {
 
 func (h *Handlers) StartHandler2Organization(c *mcontext.Context) error {
 	txt := c.Update().Message.Body.Text
-	org, err := h.UseCases.VerifyOrganization(c.Context(), txt)
+	org, err := h.UseCases.AddEmployee(c.Context(), int(c.Update().UserID), txt)
 	if err != nil {
 		if errors.Is(err, errors2.ErrInvalidToken) {
 			kb := model.NewKeyboard()

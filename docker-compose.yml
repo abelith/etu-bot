@@ -5,4 +5,11 @@ services:
             context: .
             dockerfile: build/Dockerfile
         env_file:
-            -   .env
+            -   ./etc/bot/.env
+    postgres:
+        image: postgis/postgis:17-3.6-alpine
+        platform: linux/amd64
+        env_file:
+            -   ./etc/postgres/.env
+        ports:
+            -   "5432:5432"
