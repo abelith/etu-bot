@@ -37,6 +37,7 @@ type UseCases interface {
 	AddInhabitant(ctx context.Context, inhabitant *models.Inhabitant) error
 	AddEmployee(ctx context.Context, id int, token string) (string, error)
 	DeleteUser(ctx context.Context, id int) error
+	ParseAddress(ctx context.Context, addr string) (lat float64, long float64, err error)
 }
 
 type Handlers struct {
@@ -155,8 +156,13 @@ func (h *Handlers) StartHandler3(c *mcontext.Context) error {
 		}
 	}
 
-	if latitude == 0 && longitude == 0 {
-		// todo: распарсить текстовый адрес, получить из него координаты
+	if txt := c.Update().Message; txt != nil && latitude == 0 && longitude == 0 {
+		lat, long, err := h.UseCases.ParseAddress(c, txt.Body.Text)
+		if err != nil {
+			return err
+		}
+		latitude = lat
+		longitude = long
 	}
 
 	c.State().Set("latitude", fmt.Sprint(latitude))
