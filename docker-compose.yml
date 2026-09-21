@@ -1,6 +1,6 @@
 services:
     bot:
-        image: etu-bot:dev
+        image: registry.gitlab.com/lamentoeldi/etu-bot:dev
         build:
             context: .
             dockerfile: build/Dockerfile

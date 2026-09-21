@@ -1,0 +1,52 @@
+stages:
+    - test
+    - build
+    - deploy
+
+unit_tests:
+    stage: test
+    image: golang:1.26.4-alpine3.24
+    script:
+        - go test -v -coverprofile=cover.out ./internal/... -tags=unit
+        - go tool cover -func=cover.out  | tee coverage.txt
+    rules:
+        - when: always
+    artifacts:
+        paths:
+            - cover.out
+            - coverage.txt
+        expire_in: 1 week
+
+docker_build_and_push:
+    stage: build
+    image: docker:latest
+    allow_failure: false
+    script:
+        - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+        - docker compose build
+        - docker compose push
+    rules:
+        # Merge into main
+        - if: |
+              $CI_PIPELINE_SOURCE == "merge_request_event" &&
+              $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"
+          when:
+           always
+        # Push into main
+        -  if: |
+               $CI_PIPELINE_SOURCE == "push" &&
+               $CI_COMMIT_BRANCH == "main"
+           when:
+            always
+        # Merge into dev
+        -   if: |
+                $CI_PIPELINE_SOURCE == "merge_request_event" &&
+                $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "dev"
+            when:
+                always
+        # Push into dev
+        -   if: |
+                $CI_PIPELINE_SOURCE == "push" &&
+                $CI_COMMIT_BRANCH == "dev"
+            when:
+                always
