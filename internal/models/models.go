@@ -1,9 +1,37 @@
 package models
 
+type User struct {
+	Id     int
+	Name   string
+	Active bool
+}
+
 type Inhabitant struct {
-	Id           int
-	Name         string
+	User         User
 	HouseAddress string
+}
+
+type OrgMember struct {
+	User  User
+	OrgID int
+	Role  string
+}
+
+type Organization struct {
+	Id          int
+	Name        string
+	Description string
+}
+
+type ClusterStat struct {
+	Name         string
+	HousesNumber int
+}
+
+type OrgMemberMe struct {
+	OrgMember   OrgMember
+	Org         Organization
+	ClusterStat ClusterStat
 }
 
 type House struct {
@@ -18,4 +46,7 @@ type Cluster struct {
 	Houses []*House
 }
 
-type User struct{}
+type Coordinates struct {
+	Latitude  float64
+	Longitude float64
+}

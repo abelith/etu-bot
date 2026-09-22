@@ -66,7 +66,7 @@ func main() {
 	repo.InitLogger(ctx)
 	events.SetLogger(repo)
 
-	rt := (&handlers.Handlers{UseCases: usecases.NewUseCases(repo, repo, repo, repo, geo)}).Router()
+	rt := (&handlers.StartHandlers{UseCases: usecases.NewUseCases(repo, repo, repo, repo, geo)}).Router()
 	rt.Use(func(next core.UpdateHandler) core.UpdateHandler {
 		return core.HandlerFunc(func(c *mcontext.Context) error {
 			err := next.HandleUpdate(c)
