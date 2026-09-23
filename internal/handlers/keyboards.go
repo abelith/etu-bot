@@ -11,6 +11,8 @@ var (
 	orgMeKb               = model.NewKeyboard()
 	addClusterAddressesKb = model.NewKeyboard()
 	geoKb                 = model.NewKeyboard()
+	confirmKb             = model.NewKeyboard()
+	orgPriorityKb         = model.NewKeyboard()
 )
 
 func init() {
@@ -38,4 +40,11 @@ func init() {
 	geoKb.AddRow().
 		AddGeoLocation("Геолокация дома", false).
 		AddMessage("Закончить")
+	confirmKb.AddRow().
+		AddMessage("Подтвердить").
+		AddMessage("Отмена")
+	orgPriorityKb.AddRow().
+		AddMessage("3").
+		AddMessage("4").
+		AddMessage("5")
 }

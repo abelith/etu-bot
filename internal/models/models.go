@@ -1,5 +1,16 @@
 package models
 
+type Priority = uint32
+
+const (
+	Lowest Priority = iota
+	Low
+	LowerMedium
+	Medium
+	High
+	Highest
+)
+
 type User struct {
 	Id     int
 	Name   string
@@ -49,4 +60,12 @@ type Cluster struct {
 type Coordinates struct {
 	Latitude  float64
 	Longitude float64
+}
+
+type Notification struct {
+	Id          int
+	SourceID    string
+	ClusterName string
+	Priority    Priority
+	Tags        []string
 }

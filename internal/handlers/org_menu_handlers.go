@@ -26,6 +26,15 @@ const (
 	stateSendingGeo1                = "StateSendingGeo1"
 )
 
+const (
+	stateNotify1 = "StateNotify1"
+	stateNotify2 = "StateNotify2"
+	stateNotify3 = "StateNotify3"
+	stateNotify4 = "StateNotify4"
+	stateNotify5 = "StateNotify5"
+	stateNotify6 = "StateNotify6"
+)
+
 type OrgMenuUseCases interface {
 	GetUserOrg(ctx context.Context, id int) (*models.OrgMemberMe, error)
 	ChangeUserName(ctx context.Context, id int, name string) error
@@ -33,6 +42,8 @@ type OrgMenuUseCases interface {
 	DeactivateUser(ctx context.Context, id int) error
 	ParseAddress(ctx context.Context, addr string) (lat float64, long float64, err error)
 	CreateCluster(ctx context.Context, name string, coords []models.Coordinates) error
+	GetClusterNames(ctx context.Context, userID int) ([]string, error)
+	Notify(ctx context.Context, n *models.Notification, content string) error
 }
 
 type OrgMenuHandlers struct {
@@ -91,7 +102,141 @@ func (omh *OrgMenuHandlers) MeHandler(c *mcontext.Context) error {
 }
 
 func (omh *OrgMenuHandlers) NotifyHandler(c *mcontext.Context) error {
-	panic("unimplemented")
+	c.State().SetState(stateNotify1)
+	return c.Respond(maxbot.NewMessage().SetText("Создать обращение к жильцам"))
+}
+
+func (omh *OrgMenuHandlers) notifyHandler1(c *mcontext.Context) error {
+	clusterNames, err := omh.UseCases.GetClusterNames(c, int(c.Update().UserID))
+	if err != nil {
+		return err
+	}
+
+	clustersKb := model.NewKeyboard()
+	for _, clusterName := range clusterNames {
+		clustersKb.AddRow().AddMessage(clusterName)
+	}
+
+	c.State().SetState(stateNotify2)
+	return c.Respond(maxbot.NewMessage().SetText("Выберите кластер").AddKeyboard(clustersKb))
+}
+func (omh *OrgMenuHandlers) notifyHandler2(c *mcontext.Context) error {
+	m := c.Update().Message
+	if m == nil {
+		return fmt.Errorf("empty message")
+	}
+
+	c.State().Set("notification_cluster", m.Body.Text)
+	c.State().SetState(stateNotify3)
+	return c.Respond(maxbot.NewMessage().SetText("Введите текст обращения"))
+}
+
+func (omh *OrgMenuHandlers) notifyHandler3(c *mcontext.Context) error {
+	m := c.Update().Message
+	if m == nil {
+		return fmt.Errorf("empty message")
+	}
+
+	c.State().Set("notification_mid", m.Body.Mid)
+	c.State().Set("notification_content", m.Body.Text)
+	c.State().SetState(stateNotify4)
+
+	msg := maxbot.NewMessage().
+		SetText("Всё верно?").
+		AddKeyboard(confirmKb)
+	return c.Respond(msg)
+}
+
+func (omh *OrgMenuHandlers) notifyHandler4(c *mcontext.Context) error {
+	m := c.Update().Message
+	if m == nil {
+		return fmt.Errorf("empty message")
+	}
+
+	switch m.Body.Text {
+	case "Подтвердить":
+		c.State().SetState(stateNotify5)
+		return c.Respond(maxbot.NewMessage().SetText("Укажите приоритет"))
+	case "Отмена":
+		c.State().Clear()
+		return c.Respond(maxbot.NewMessage().SetText("Отменено"))
+	}
+
+	return nil
+}
+
+func (omh *OrgMenuHandlers) notifyHandler5(c *mcontext.Context) error {
+	m := c.Update().Message
+	if m == nil {
+		return fmt.Errorf("empty message")
+	}
+
+	switch m.Body.Text {
+	case "3":
+		c.State().Set("notification_priority", "3")
+	case "4":
+		c.State().Set("notification_priority", "4")
+	case "5":
+		c.State().Set("notification_priority", "5")
+	default:
+		return c.Respond(maxbot.NewMessage().SetText("Вы указали некорректный приоритет"))
+	}
+
+	c.State().SetState(stateNotify6)
+	msg := maxbot.NewMessage().
+		SetText("Отправить?").
+		AddKeyboard(confirmKb)
+	return c.Respond(msg)
+}
+
+func (omh *OrgMenuHandlers) notifyHandler6(c *mcontext.Context) error {
+	m := c.Update().Message
+	if m == nil {
+		return fmt.Errorf("empty message")
+	}
+
+	switch m.Body.Text {
+	case "Подтвердить":
+		clusterName, ok := c.State().Get("notification_cluster")
+		if !ok {
+			return fmt.Errorf("no clusterName")
+		}
+
+		mid, ok := c.State().Get("notification_mid")
+		if !ok {
+			return fmt.Errorf("no mid")
+		}
+
+		content, ok := c.State().Get("notification_content")
+		if !ok {
+			return fmt.Errorf("no content")
+		}
+
+		priorityStr, ok := c.State().Get("notification_priority")
+		if !ok {
+			return fmt.Errorf("no priority")
+		}
+
+		priority, err := strconv.ParseInt(priorityStr, 10, 32)
+		if err != nil {
+			return err
+		}
+
+		n := &models.Notification{
+			SourceID:    mid,
+			ClusterName: clusterName,
+			Priority:    models.Priority(priority),
+		}
+		if err := omh.UseCases.Notify(c, n, content); err != nil {
+			return err
+		}
+		return c.Respond(maxbot.NewMessage().SetText("Уведомление создано"))
+	case "Отмена":
+		c.State().Clear()
+		return c.Respond(maxbot.NewMessage().SetText("Отменено"))
+	}
+
+	return nil
 }
 
 func (omh *OrgMenuHandlers) AnalyticsHandler(c *mcontext.Context) error {
