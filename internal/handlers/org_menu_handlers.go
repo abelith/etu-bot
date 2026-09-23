@@ -240,11 +240,11 @@ func (omh *OrgMenuHandlers) notifyHandler6(c *mcontext.Context) error {
 }
 
 func (omh *OrgMenuHandlers) AnalyticsHandler(c *mcontext.Context) error {
-	panic("unimplemented")
+	return c.Respond(maxbot.NewMessage().SetText("Будет добавлено позже"))
 }
 
 func (omh *OrgMenuHandlers) RequestsHandlers(c *mcontext.Context) error {
-	panic("unimplemented")
+	return c.Respond(maxbot.NewMessage().SetText("Будет добавлено позже"))
 }
 
 func (omh *OrgMenuHandlers) meChangeNameHandler(c *mcontext.Context) error {

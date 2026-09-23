@@ -62,7 +62,7 @@ func (uc *UseCases) AddInhabitant(ctx context.Context, inhabitant *models.Inhabi
 		return err
 	}
 
-	events.Log.Write(map[string]any{"type": "inhabitant_added", "id": inhabitant.Id, "addr": inhabitant.HouseAddress})
+	events.Log.Write(map[string]any{"type": "inhabitant_added", "id": inhabitant.User.Id, "addr": inhabitant.HouseAddress})
 	return nil
 }
 
@@ -97,4 +97,44 @@ func (uc *UseCases) DeleteUser(ctx context.Context, id int) error {
 
 func (uc *UseCases) ParseAddress(ctx context.Context, addr string) (lat float64, long float64, err error) {
 	return uc.geo.ParseAddress(ctx, addr)
+}
+
+func (uc *UseCases) GetUserOrg(ctx context.Context, id int) (*models.OrgMemberMe, error) {
+	// get user org data agg
+	return nil, fmt.Errorf("unimplemented")
+}
+
+func (uc *UseCases) ChangeUserName(ctx context.Context, id int, name string) error {
+	// update user: set username = name
+	return fmt.Errorf("unimplemented")
+}
+
+func (uc *UseCases) ActivateUser(ctx context.Context, id int) error {
+	// update user: set active = true
+	return fmt.Errorf("unimplemented")
+}
+
+func (uc *UseCases) DeactivateUser(ctx context.Context, id int) error {
+	// update user: set active = false
+	return fmt.Errorf("unimplemented")
+}
+
+func (uc *UseCases) CreateCluster(ctx context.Context, name string, coords []models.Coordinates) error {
+	// create cluster with name name from set of coords
+	return fmt.Errorf("unimplemented")
+}
+
+func (uc *UseCases) GetClusterNames(ctx context.Context, userID int) ([]string, error) {
+	// identify org id by user id
+	// retrieve cluster names for org id
+	return nil, fmt.Errorf("unimplemented")
+}
+
+func (uc *UseCases) Notify(ctx context.Context, n *models.Notification, content string) error {
+	// parse tags via api
+	// add tags to n
+	// write notification to outbox
+	// create and write tasks to outbox
+	// start notification worker
+	return fmt.Errorf("unimplemented")
 }
