@@ -2,6 +2,7 @@ CREATE TABLE IF NOT EXISTS organizations(
     id SERIAL UNIQUE NOT NULL PRIMARY KEY,
     name VARCHAR NOT NULL,
     description TEXT,
-    json_data TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    json_data JSONB,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT NULL
 );
