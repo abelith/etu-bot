@@ -53,6 +53,7 @@ type House struct {
 }
 
 type Cluster struct {
+	OrgID  int
 	Name   string
 	Houses []*House
 }
@@ -68,4 +69,16 @@ type Notification struct {
 	ClusterName string
 	Priority    Priority
 	Tags        []string
+}
+
+type UserUpdate struct {
+	Id     int
+	Name   *string
+	Active *bool
+}
+
+type NotificationTask struct {
+	TaskID   int
+	UserID   int
+	SourceID string
 }

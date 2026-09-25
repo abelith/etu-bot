@@ -41,7 +41,7 @@ type OrgMenuUseCases interface {
 	ActivateUser(ctx context.Context, id int) error
 	DeactivateUser(ctx context.Context, id int) error
 	ParseAddress(ctx context.Context, addr string) (lat float64, long float64, err error)
-	CreateCluster(ctx context.Context, name string, coords []models.Coordinates) error
+	CreateCluster(ctx context.Context, userID int, name string, coords []models.Coordinates) error
 	GetClusterNames(ctx context.Context, userID int) ([]string, error)
 	Notify(ctx context.Context, n *models.Notification, content string) error
 }
@@ -420,7 +420,7 @@ func (omh *OrgMenuHandlers) flushAddresses(c *mcontext.Context) error {
 		return fmt.Errorf("no cluster name")
 	}
 
-	return omh.UseCases.CreateCluster(c, name, coords)
+	return omh.UseCases.CreateCluster(c, int(c.Update().UserID), name, coords)
 }
 
 func (omh *OrgMenuHandlers) receiveAddrFileHandler(c *mcontext.Context) error {

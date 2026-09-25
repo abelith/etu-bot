@@ -1,6 +1,8 @@
 CREATE TABLE IF NOT EXISTS notifications_tasks(
-    notification_id INT NOT NULL REFERENCES notifications(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    task_id SERIAL NOT NULL UNIQUE PRIMARY KEY,
     user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    notification_id INT NOT NULL REFERENCES notifications(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    UNIQUE (user_id, notification_id),
     status VARCHAR NOT NULL DEFAULT 'pending',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
