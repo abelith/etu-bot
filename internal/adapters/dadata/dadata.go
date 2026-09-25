@@ -3,11 +3,13 @@ package dadata
 import (
 	"context"
 	"fmt"
+	"strconv"
+
 	"github.com/ekomobile/dadata/v2"
 	"github.com/ekomobile/dadata/v2/api/clean"
+	"github.com/ekomobile/dadata/v2/api/suggest"
 	"github.com/ekomobile/dadata/v2/client"
 	"github.com/ilyakaznacheev/cleanenv"
-	"strconv"
 )
 
 type Config struct {
@@ -16,7 +18,8 @@ type Config struct {
 }
 
 type Geocoder struct {
-	api *clean.Api
+	cleanAPI   *clean.Api
+	suggestAPI *suggest.Api
 }
 
 func NewConfig() (*Config, error) {
@@ -32,12 +35,15 @@ func NewGeocoder(cfg *Config) *Geocoder {
 		ApiKeyValue:    cfg.ApiKey,
 		SecretKeyValue: cfg.SecretKey,
 	}
-	api := dadata.NewCleanApi(client.WithCredentialProvider(&creds))
-	return &Geocoder{api: api}
+
+	return &Geocoder{
+		cleanAPI:   dadata.NewCleanApi(client.WithCredentialProvider(&creds)),
+		suggestAPI: dadata.NewSuggestApi(client.WithCredentialProvider(&creds)),
+	}
 }
 
 func (g *Geocoder) ParseAddress(ctx context.Context, addr string) (lat, long float64, err error) {
-	res, err := g.api.Address(ctx, addr)
+	res, err := g.cleanAPI.Address(ctx, addr)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -57,4 +63,30 @@ func (g *Geocoder) ParseAddress(ctx context.Context, addr string) (lat, long flo
 	}
 
 	return lat, long, nil
+}
+
+type GeolocateRequest struct {
+	Lat          float64 `json:"lat"`
+	Lon          float64 `json:"lon"`
+	Count        int     `json:"count,omitempty"`
+	RadiusMeters int     `json:"radius_meters,omitempty"`
+}
+
+func (g *Geocoder) ParseCoordinates(ctx context.Context, lat, long float64) (addr string, err error) {
+	result := &suggest.AddressResponse{}
+
+	req := &GeolocateRequest{
+		Lat: lat,
+		Lon: long,
+	}
+
+	if err = g.suggestAPI.Client.Post(ctx, "geolocate/address", req, result); err != nil {
+		return "", err
+	}
+
+	if len(result.Suggestions) < 1 {
+		return "", fmt.Errorf("address not found")
+	}
+
+	return result.Suggestions[0].Value, nil
 }

@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/abelith/etu-bot/internal/adapters/dadata"
+	max2 "github.com/abelith/etu-bot/internal/adapters/max"
 	"github.com/abelith/etu-bot/internal/adapters/postgres"
+	"github.com/abelith/etu-bot/internal/adapters/tags"
 	errors2 "github.com/abelith/etu-bot/internal/errors"
 	"github.com/abelith/etu-bot/internal/handlers"
 	"github.com/abelith/etu-bot/internal/infrastructure/events"
@@ -39,7 +41,8 @@ func main() {
 			Timeout: 10 * time.Second,
 		}),
 	}
-	api, err := maxbot.NewApi(os.Getenv("TOKEN"), opts...)
+	botToken := os.Getenv("TOKEN")
+	api, err := maxbot.NewApi(botToken, opts...)
 	if err != nil {
 		fmt.Println("api initial err:", err)
 		return
@@ -66,7 +69,21 @@ func main() {
 	repo.InitLogger(ctx)
 	events.SetLogger(repo)
 
-	rt := (&handlers.StartHandlers{UseCases: usecases.NewUseCases(repo, repo, repo, repo, geo)}).Router()
+	cfgTags, err := tags.NewConfig()
+	if err != nil {
+		log.Fatal().Err(err).Send()
+	}
+
+	t, err := tags.NewParser(cfgTags)
+	if err != nil {
+		log.Fatal().Err(err).Send()
+	}
+
+	n := &max2.Notifier{BotToken: botToken}
+
+	rt := (&handlers.StartHandlers{UseCases: usecases.NewUseCases(
+		repo, repo, repo, repo, repo, geo, t, repo, repo, n,
+	)}).Router()
 	rt.Use(func(next core.UpdateHandler) core.UpdateHandler {
 		return core.HandlerFunc(func(c *mcontext.Context) error {
 			err := next.HandleUpdate(c)
